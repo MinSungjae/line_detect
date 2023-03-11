@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
 <launch>
   <node pkg="line_detect" type="yellow_detect_node" name="yellow_node"/>
-  <node pkg="line_detect" type="white_detect_node" name="white_node"/>
+  <node pkg="line_detect" type="white_detect_node" name="white_node" output="screen"/>
 </launch>

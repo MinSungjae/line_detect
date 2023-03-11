@@ -107,6 +107,8 @@ int main(int argc, char** argv)
     HoughLinesP(img_edge, lines, 1, CV_PI / 180 , 50 , 50, 35);
 
     //cout << "slope treshol : " << slope_treshold << endl;
+    #define HIST_RESOLUTION 6
+    int slope_hist[HIST_RESOLUTION] = { 0 };
 
     for(size_t i = 0; i < lines.size(); i++)
     {
@@ -120,7 +122,34 @@ int main(int argc, char** argv)
       cv::line(frame, Point(pt1.x, pt1.y) , Point(pt2.x , pt2.y) , Scalar(0,255,0) , 2 , 8);
       if(abs(slope) >= slope_treshold)
       {
+        for(int hist = 0; hist < HIST_RESOLUTION; hist++)
+          if(tan(hist*M_PI/HIST_RESOLUTION+M_PI/2) < slope && slope < tan((hist + 1)*M_PI/HIST_RESOLUTION+M_PI/2))
+            slope_hist[hist]++;
+
         selected_lines.push_back(line);
+        // pts.push_back(pt1);
+        // pts.push_back(pt2);
+      }
+    }
+
+    int major_slope, major_slope_count = 0;
+    for(int hist = 0; hist < HIST_RESOLUTION; hist++)
+    {
+        if(slope_hist[hist] > major_slope_count)
+        {
+          major_slope = hist;
+          major_slope_count = slope_hist[hist];
+        }
+    }
+    std::cout << "major slope : " << major_slope << std::endl;
+
+    for(size_t i = 0; i < selected_lines.size(); i++)
+    {
+      pt1 = Point(selected_lines[i][0] , selected_lines[i][1]);
+      pt2 = Point(selected_lines[i][2], selected_lines[i][3]);
+      double slope = (static_cast<double>(pt1.y) - static_cast<double>(pt2.y)) / (static_cast<double>(pt1.x) - static_cast<double>(pt2.x) );
+      if(tan(major_slope*M_PI/HIST_RESOLUTION+M_PI/2) < slope && slope < tan((major_slope + 1)*M_PI/HIST_RESOLUTION+M_PI/2))
+      {
         pts.push_back(pt1);
         pts.push_back(pt2);
       }
@@ -149,7 +178,7 @@ int main(int argc, char** argv)
     }
 
 
-   for(size_t i = 0; i < selected_lines.size(); i++)
+    for(size_t i = 0; i < selected_lines.size(); i++)
     {
       //cout << "i : " << i << endl;
       Vec4i I = selected_lines[i];

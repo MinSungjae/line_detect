@@ -4,26 +4,25 @@
 #include <opencv2/opencv.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/Image.h>
-#include <geometry_msgs/Pose2D.h>
-
 #include <vector>
+#include <geometry_msgs/Pose2D.h>
 
 using namespace std;
 using namespace cv;
 
-//Yellow ROI
-int roi_x = 1760;
-int roi_y = 0;
-int roi_width = 2500;
-int roi_height = 700;
+//White ROI
+int roi_x = 2250;
+int roi_y = 400;
+int roi_width = 1000;
+int roi_height = 350;
 
-//Yellow Color Setting
-int yellow_hue_low = 10;
+//White Color Setting
+int yellow_hue_low = 13;
 int yellow_hue_high = 30;
-int yellow_sat_low = 60;
-int yellow_sat_high = 255;
-int yellow_val_low = 50;
-int yellow_val_high =200;
+int yellow_sat_low = 55;
+int yellow_sat_high = 200;
+int yellow_val_low = 40;
+int yellow_val_high = 125;
 
 int main(int argc, char** argv)
 {
@@ -46,7 +45,7 @@ int main(int argc, char** argv)
   image_transport::ImageTransport it(nh);
   image_transport::Publisher pub = it.advertise("/yellow_detect/yellow_detect_img", 1);
   image_transport::Publisher pub2 = it.advertise("/yellow_detect/yellow_img", 1);
-  image_transport::Subscriber sub = it.subscribe("/mindvision1/image", 1,
+  image_transport::Subscriber sub = it.subscribe("/mindvision1/image_rect_color", 1,
   [&](const sensor_msgs::ImageConstPtr& msg){
     cv_bridge::CvImageConstPtr cv_ptr;
     try
@@ -60,7 +59,7 @@ int main(int argc, char** argv)
     }
 
     // Recognize Slope angle tolerance
-    int slope_tor = 45;
+    int slope_tor = 75;
     // Recognize Slope angle treshold (-45 deg ~ 45deg)
     double slope_treshold = (90 - slope_tor) * CV_PI / 180.0;
 
@@ -83,14 +82,29 @@ int main(int argc, char** argv)
     cvtColor(frame, img_hsv, COLOR_BGR2HSV);
     inRange(img_hsv, Scalar(yellow_hue_low, yellow_sat_low, yellow_val_low) , Scalar(yellow_hue_high, yellow_sat_high, yellow_val_high), yellow_mask);
     bitwise_and(frame, frame, img_yellow, yellow_mask);
+    medianBlur(img_yellow, img_yellow, 5);
     img_yellow.copyTo(copyImg);
 
     // Canny Edge Detection
     cvtColor(img_yellow, img_yellow, COLOR_BGR2GRAY);
-    Canny(img_yellow, img_edge, 50, 450);
+    // Canny(img_yellow, img_edge, 30, 60);
+    // Sobel(img_yellow, img_edge, img_yellow.type(), 1, 0, 3);
+    // Scharr(img_yellow, img_edge, img_yellow.type(), 1, 0, 3);
+    Mat img_edgeXp;
+    Mat prewittP = (Mat_<int>(3,3) << -1, 0, 1, -2, 0, 2, -1, 0, 1);
+    filter2D(img_yellow, img_edgeXp, img_yellow.type(), prewittP);
+
+    Mat img_edgeXm;
+    Mat prewittM = (Mat_<int>(3,3) << 1, 0, -1, 2, 0, -2, 1, 0, -1);
+    filter2D(img_yellow, img_edgeXm, img_yellow.type(), prewittM);
+
+    img_edge = img_edgeXp + img_edgeXm;
+    // medianBlur(edges, img_edge, 9);
+
+
 
     // Line Dtection
-    HoughLinesP(img_edge, lines, 1, CV_PI / 180 , 50 ,20, 10);
+    HoughLinesP(img_edge, lines, 1, CV_PI / 180 , 50, 50, 25);
 
     //cout << "slope treshol : " << slope_treshold << endl;
 
@@ -135,7 +149,7 @@ int main(int argc, char** argv)
     }
 
 
-   for(size_t i = 0; i < selected_lines.size(); i++)
+    for(size_t i = 0; i < selected_lines.size(); i++)
     {
       //cout << "i : " << i << endl;
       Vec4i I = selected_lines[i];

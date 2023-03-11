@@ -11,18 +11,18 @@ using namespace std;
 using namespace cv;
 
 //White ROI
-int roi_x = 2200;
-int roi_y = 350;
-int roi_width = 1600;
+int roi_x = 2250;
+int roi_y = 400;
+int roi_width = 1000;
 int roi_height = 350;
 
 //White Color Setting
 int white_hue_low = 0;
-int white_hue_high = 255;
-int white_sat_low = 0;
-int white_sat_high = 12;
-int white_val_low = 93;
-int white_val_high =255;
+int white_hue_high = 25;
+int white_sat_low = 27;
+int white_sat_high = 80;
+int white_val_low = 70;
+int white_val_high = 125;
 
 int main(int argc, char** argv)
 {
@@ -45,7 +45,7 @@ int main(int argc, char** argv)
   image_transport::ImageTransport it(nh);
   image_transport::Publisher pub = it.advertise("/white_detect/white_detect_img", 1);
   image_transport::Publisher pub2 = it.advertise("/white_detect/white_img", 1);
-  image_transport::Subscriber sub = it.subscribe("/mindvision1/image", 1,
+  image_transport::Subscriber sub = it.subscribe("/mindvision1/image_rect_color", 1,
   [&](const sensor_msgs::ImageConstPtr& msg){
     cv_bridge::CvImageConstPtr cv_ptr;
     try
@@ -82,14 +82,29 @@ int main(int argc, char** argv)
     cvtColor(frame, img_hsv, COLOR_BGR2HSV);
     inRange(img_hsv, Scalar(white_hue_low, white_sat_low, white_val_low) , Scalar(white_hue_high, white_sat_high, white_val_high), white_mask);
     bitwise_and(frame, frame, img_white, white_mask);
+    medianBlur(img_white, img_white, 7);
     img_white.copyTo(copyImg);
 
     // Canny Edge Detection
     cvtColor(img_white, img_white, COLOR_BGR2GRAY);
-    Canny(img_white, img_edge, 50, 450);
+    // Canny(img_white, img_edge, 30, 60);
+    // Sobel(img_white, img_edge, img_white.type(), 1, 0, 3);
+    // Scharr(img_white, img_edge, img_white.type(), 1, 0, 3);
+    Mat img_edgeXp;
+    Mat prewittP = (Mat_<int>(3,3) << -1, 0, 1, -2, 0, 2, -1, 0, 1);
+    filter2D(img_white, img_edgeXp, img_white.type(), prewittP);
+
+    Mat img_edgeXm;
+    Mat prewittM = (Mat_<int>(3,3) << 1, 0, -1, 2, 0, -2, 1, 0, -1);
+    filter2D(img_white, img_edgeXm, img_white.type(), prewittM);
+
+    img_edge = img_edgeXp + img_edgeXm;
+    // medianBlur(edges, img_edge, 9);
+
+
 
     // Line Dtection
-    HoughLinesP(img_edge, lines, 1, CV_PI / 180 , 50 ,20, 10);
+    HoughLinesP(img_edge, lines, 1, CV_PI / 180 , 50 , 50, 35);
 
     //cout << "slope treshol : " << slope_treshold << endl;
 

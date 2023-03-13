@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-  <node pkg="line_detect" type="yellow_detect_node" name="yellow_node"/>
+  <node pkg="line_detect" type="yellow_detect_node" name="yellow_node" output="screen"/>
   <node pkg="line_detect" type="white_detect_node" name="white_node" output="screen"/>
+  <node pkg="rqt_gui" type="rqt_gui" name="lane_detect_visualization" args="--perspective-file $(find line_detect)/rqt/lane_detect.perspective"/>
 </launch>

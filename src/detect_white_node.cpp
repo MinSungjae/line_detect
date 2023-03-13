@@ -24,6 +24,14 @@ int white_sat_high = 80;
 int white_val_low = 70;
 int white_val_high = 125;
 
+// Road Color Setting
+int black_hue_low = 155;
+int black_hue_high = 175;
+int black_sat_low = 0;
+int black_sat_high = 100;
+int black_val_low = 0;
+int black_val_high = 75;
+
 int main(int argc, char** argv)
 {
   // Node Name : white_detect
@@ -66,6 +74,7 @@ int main(int argc, char** argv)
     Mat img_hsv, white_mask, img_white, img_edge;
     Mat frame = cv_ptr->image;
     Mat grayImg, blurImg, edgeImg, copyImg;
+    Mat black_mask, img_road;
 
     Point pt1, pt2;
     vector<Vec4i> lines, selected_lines;
@@ -78,10 +87,14 @@ int main(int argc, char** argv)
     frame = frame(bounds & roi);
 
     // Color Filtering
-
     cvtColor(frame, img_hsv, COLOR_BGR2HSV);
+
     inRange(img_hsv, Scalar(white_hue_low, white_sat_low, white_val_low) , Scalar(white_hue_high, white_sat_high, white_val_high), white_mask);
+    inRange(img_hsv, Scalar(black_hue_low, black_sat_low, black_val_low) , Scalar(black_hue_high, black_sat_high, black_val_high), black_mask);
+
     bitwise_and(frame, frame, img_white, white_mask);
+    bitwise_and(frame, frame, img_road, black_mask);
+
     medianBlur(img_white, img_white, 7);
     img_white.copyTo(copyImg);
 
@@ -101,12 +114,23 @@ int main(int argc, char** argv)
     img_edge = img_edgeXp + img_edgeXm;
     // medianBlur(edges, img_edge, 9);
 
-
+    bool border_found = false;
+    int border_row = 0;
+    cvtColor(img_road, img_road, COLOR_BGR2GRAY);
+    for(int row = img_road.rows *0.8; row > 0; row--)
+      if(cv::countNonZero(img_road.row(row)) < img_road.cols / 3 || border_found)
+      {
+        img_edge.row(row).setTo(Scalar(0, 0, 0));
+        if(!border_found)
+          border_row = row;
+        border_found = true;
+      }
+    line(img_road, Point(0, border_row), Point(img_road.cols, border_row), Scalar(255,255,255), 2, 8);
+    std::cout << "border: " << border_row << std::endl;
 
     // Line Dtection
     HoughLinesP(img_edge, lines, 1, CV_PI / 180 , 50 , 50, 35);
 
-    //cout << "slope treshol : " << slope_treshold << endl;
     #define HIST_RESOLUTION 6
     int slope_hist[HIST_RESOLUTION] = { 0 };
 
